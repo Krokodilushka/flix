@@ -1,3 +1,6 @@
 board_manager:
   additional_urls:
     - https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+network:
+  # Помогает при ошибке "Error during install: context deadline exceeded (Client.Timeout or context cancellation while reading body)" при загрузке зависимостей (make dependencies)
+  connection_timeout: 900s

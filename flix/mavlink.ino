@@ -17,6 +17,9 @@ String mavlinkPrintBuffer;
 
 extern double controlsTime;
 extern int rollChannel, pitchChannel, throttleChannel, yawChannel, armedChannel, modeChannel;
+#if GAMEPAD_ENABLED
+extern uint8_t gamepadRssi;
+#endif
 
 void processMavlink() {
 	sendMavlink();
@@ -43,6 +46,11 @@ void sendMavlink() {
 		mavlink_msg_extended_sys_state_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg,
 			MAV_VTOL_STATE_UNDEFINED, landed ? MAV_LANDED_STATE_ON_GROUND : MAV_LANDED_STATE_IN_AIR);
 		sendMessage(&msg);
+
+#if GAMEPAD_ENABLED
+		mavlink_msg_radio_status_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, gamepadRssi, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
+		sendMessage(&msg);
+#endif
 	}
 
 	if (t - lastFast >= PERIOD_FAST) {

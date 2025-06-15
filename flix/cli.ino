@@ -126,7 +126,11 @@ void doCommand(String str, bool echo = false) {
 	} else if (command == "log") {
 		dumpLog();
 	} else if (command == "cr") {
+#if RC_ENABLED
 		calibrateRC();
+#else
+		print("RC disabled\n");
+#endif
 	} else if (command == "ca") {
 		calibrateAccel();
 	} else if (command == "mfr") {

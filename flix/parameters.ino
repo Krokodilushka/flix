@@ -8,6 +8,7 @@
 extern float channelNeutral[16];
 extern float channelMax[16];
 extern float mavlinkControlScale;
+extern gamepad_limits gamepadLimits;
 
 Preferences storage;
 
@@ -68,6 +69,12 @@ Parameter parameters[] = {
 #if WIFI_ENABLED
 	// MAVLink
 	{"MAV_CTRL_SCALE", &mavlinkControlScale},
+#endif
+#if GAMEPAD_ENABLED
+	{"GAMEPAD_THROTTLE", &gamepadLimits.throttle},
+	{"GAMEPAD_PITCH", &gamepadLimits.pitch},
+	{"GAMEPAD_YAW", &gamepadLimits.yaw},
+	{"GAMEPAD_ROLL", &gamepadLimits.roll},
 #endif
 };
 

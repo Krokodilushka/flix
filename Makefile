@@ -17,6 +17,7 @@ dependencies .dependencies:
 	arduino-cli lib update-index
 	arduino-cli lib install "FlixPeriph"
 	arduino-cli lib install "MAVLink"@2.0.16
+	arduino-cli lib install "NimBLE-Arduino"@2.3.0
 	touch .dependencies
 
 gazebo/build cmake: gazebo/CMakeLists.txt

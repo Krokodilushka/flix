@@ -6,9 +6,13 @@
 #include "vector.h"
 #include "quaternion.h"
 #include "util.h"
+#include <NimBLEDevice.h>
+#include <NimBLEAddress.h>
 
 #define SERIAL_BAUDRATE 115200
 #define WIFI_ENABLED 1
+#define RC_ENABLED 1
+#define GAMEPAD_ENABLED 0
 
 double t = NAN; // current step time, s
 float dt; // time delta from previous step, s
@@ -23,7 +27,7 @@ float motors[4]; // normalized motors thrust in range [0..1]
 
 void setup() {
 	Serial.begin(SERIAL_BAUDRATE);
-	print("Initializing flix");
+	print("Initializing flix\n");
 	disableBrownOut();
 	setupParameters();
 	setupLED();
@@ -33,15 +37,25 @@ void setup() {
 	setupWiFi();
 #endif
 	setupIMU();
+#if RC_ENABLED
 	setupRC();
+#endif
+#if GAMEPAD_ENABLED
+	setupGamepad();
+#endif
 	setLED(false);
-	print("Initializing complete");
+	print("Initializing complete\n");
 }
 
 void loop() {
 	readIMU();
 	step();
+#if RC_ENABLED
 	readRC();
+#endif
+#if GAMEPAD_ENABLED
+	loopGamepad();
+#endif
 	estimate();
 	control();
 	sendMotors();
