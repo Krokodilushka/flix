@@ -3,10 +3,15 @@
 
 // Work with the RC receiver
 
+// На esp32 c3 supermini нет serial2, поэтому отключаю полностью
+#if RC_ENABLED
+
 #include <SBUS.h>
 #include "util.h"
 
 SBUS RC(Serial2); // NOTE: Use RC(Serial2, 16, 17) if you use the old UART2 pins
+
+#endif
 
 // RC channels mapping:
 int rollChannel = 0;
@@ -19,6 +24,8 @@ int modeChannel = 5;
 double controlsTime; // time of the last controls update
 float channelNeutral[16] = {NAN}; // first element NAN means not calibrated
 float channelMax[16];
+
+#if RC_ENABLED
 
 void setupRC() {
 	print("Setup RC\n");
@@ -67,3 +74,5 @@ void printRCCal() {
 	for (int i = 0; i < sizeof(channelMax) / sizeof(channelMax[0]); i++) print("%g ", channelMax[i]);
 	print("\n");
 }
+
+#endif
