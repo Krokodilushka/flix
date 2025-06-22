@@ -5,6 +5,7 @@
 
 #include "vector.h"
 #include "quaternion.h"
+#include <Wire.h>
 #include "util.h"
 #include <NimBLEDevice.h>
 #include <NimBLEAddress.h>
@@ -43,6 +44,9 @@ void setup() {
 #if GAMEPAD_ENABLED
 	setupGamepad();
 #endif
+	Wire.begin();
+	setupBattery();
+	setupBarometr();
 	setLED(false);
 	print("Initializing complete\n");
 }
@@ -65,4 +69,6 @@ void loop() {
 #endif
 	logData();
 	syncParameters();
+	loopBattery();
+	loopBarometr();
 }

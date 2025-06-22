@@ -8,7 +8,10 @@
 extern float channelNeutral[16];
 extern float channelMax[16];
 extern float mavlinkControlScale;
-extern gamepad_limits gamepadLimits;
+#if GAMEPAD_ENABLED
+	extern gamepad_limits gamepadLimits;
+#endif
+extern float seaLevelPa;
 
 Preferences storage;
 
@@ -76,6 +79,7 @@ Parameter parameters[] = {
 	{"GAMEPAD_YAW", &gamepadLimits.yaw},
 	{"GAMEPAD_ROLL", &gamepadLimits.roll},
 #endif
+	{"ALT_SEA_LEVEL_PA", &seaLevelPa},
 };
 
 void setupParameters() {

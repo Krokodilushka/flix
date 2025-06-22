@@ -46,8 +46,6 @@ enum class ConnectionState
     SUBSCRIBED    // Подписка на уведомления о состоянии кнопок выполнена
 };
 ConnectionState connectionState = ConnectionState::DISCONNECTED; // Текущее состояние подключения
-double throttleHandleTime = 0.0;
-double loopGamepadUpdateRssTime = 0.0;
 uint8_t gamepadRssi = 0;
 
 // Ограничения для стиков и триггеров обеспечивают плавное управление. Могут быть настроены через QGroundControl.
@@ -124,6 +122,7 @@ class ClientCallback : public NimBLEClientCallbacks
 
 void setupGamepad()
 {
+    print("Setup Gamepad\n");
     NimBLEDevice::init("Flix drone");
     pClient = NimBLEDevice::createClient();
     pClient->setClientCallbacks(new ClientCallback());
@@ -149,11 +148,12 @@ void loopGamepad()
         print("Успешно подписался на уведомления о нажатии кнопок геймпада\n");
         break;
     case ConnectionState::SUBSCRIBED:
+        static double rssiLastUpdateTime = 0.0;
         controlsTime = t;
-        if (t - loopGamepadUpdateRssTime > RSSI_INTERVAL)
+        if (t - rssiLastUpdateTime > RSSI_INTERVAL)
         {
             gamepadRssi = pClient->getRssi();
-            loopGamepadUpdateRssTime = t;
+            rssiLastUpdateTime = t;
         }
         handleThrottle();
         break;
@@ -186,12 +186,13 @@ void loopGamepad()
  */
 void handleThrottle()
 {
-    if (t - throttleHandleTime > THROTTLE_CHANGE_INTERVAL)
+    static double throttleLastUpdateTime = 0.0;
+    if (t - throttleLastUpdateTime > THROTTLE_CHANGE_INTERVAL)
     {
         const int16_t throttle = gamepadState.rt - gamepadState.lt;                               // Если конопки тяги прижаты на равное значение, то уровень тяги не изменится
         float value = mapf(throttle, -255, 255, -gamepadLimits.throttle, gamepadLimits.throttle); // Ограничить влияние кнопок для плавности
         controls[throttleChannel] = constrain(controls[throttleChannel] + value, 0.f, 1.f);       // Прибавить к текущему уровню тяги
-        throttleHandleTime = t;
+        throttleLastUpdateTime = t;
     }
 }
 
@@ -237,7 +238,7 @@ void scan()
 }
 
 /*
- * Подписывается на уведомления о состоянии кнопок и стиков геймпада через.
+ * Подписывается на уведомления о состоянии кнопок и стиков геймпада.
  * Возвращает true при успешной подписке, false при ошибке.
  */
 bool subscribe()

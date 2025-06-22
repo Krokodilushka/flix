@@ -47,10 +47,64 @@ void sendMavlink() {
 			MAV_VTOL_STATE_UNDEFINED, landed ? MAV_LANDED_STATE_ON_GROUND : MAV_LANDED_STATE_IN_AIR);
 		sendMessage(&msg);
 
+// Отправка данных о качестве связи с геймпадом
 #if GAMEPAD_ENABLED
 		mavlink_msg_radio_status_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, gamepadRssi, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
 		sendMessage(&msg);
 #endif
+
+		// Отправка данных о состоянии аккумулятора
+		uint8_t batteryChargeState = MAV_BATTERY_CHARGE_STATE::MAV_BATTERY_CHARGE_STATE_OK;
+		if (batteryData.busVoltage <= BATTERY_MAVLINK_STATUS_EMERGENCY)
+		{
+			batteryChargeState = MAV_BATTERY_CHARGE_STATE::MAV_BATTERY_CHARGE_STATE_EMERGENCY;
+		}
+		else if (batteryData.busVoltage <= BATTERY_MAVLINK_STATUS_CRITICAL)
+		{
+			batteryChargeState = MAV_BATTERY_CHARGE_STATE::MAV_BATTERY_CHARGE_STATE_CRITICAL;
+		}
+		else if (batteryData.busVoltage <= BATTERY_MAVLINK_STATUS_LOW)
+		{
+			batteryChargeState = MAV_BATTERY_CHARGE_STATE::MAV_BATTERY_CHARGE_STATE_LOW;
+		}
+		const uint16_t voltages[10] = {batteryData.busVoltage, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX, UINT16_MAX};
+		const uint16_t voltagesExt[4] = {};
+		mavlink_msg_battery_status_pack(
+			SYSTEM_ID,
+			MAV_COMP_ID_AUTOPILOT1,
+			&msg,
+			1,
+			MAV_BATTERY_FUNCTION_ALL,
+			MAV_BATTERY_TYPE_LIPO,
+			INT16_MAX,
+			voltages,
+			batteryData.current / 10,
+			-1,
+			-1,
+			map(constrain(batteryData.busVoltage, BATTERY_MIN_LEVEL, BATTERY_MAX_LEVEL), BATTERY_MIN_LEVEL, BATTERY_MAX_LEVEL, 0, 100),
+			0,
+			batteryChargeState,
+			voltagesExt,
+			MAV_BATTERY_MODE_UNKNOWN,
+			0);
+
+		sendMessage(&msg);
+
+		// Отправка данных о текущей высоте
+		mavlink_msg_global_position_int_pack(
+			SYSTEM_ID,
+			MAV_COMP_ID_AUTOPILOT1,
+			&msg,
+			millis(),
+			NULL,
+			NULL,
+			paToAltitude(barometrData.pa) * 1000,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			UINT16_MAX);
+		sendMessage(&msg);
 	}
 
 	if (t - lastFast >= PERIOD_FAST) {
