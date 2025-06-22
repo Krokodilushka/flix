@@ -1,0 +1,29 @@
+{
+	"name": "Flix devcontainer",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.shell.linux": "/bin/bash"
+			},
+			"extensions": [
+				"vscode-arduino.vscode-arduino-community",
+				"ms-vscode.vscode-serial-monitor",
+				"ms-vscode.cpptools"
+			]
+		}
+	},
+	"runArgs": [
+		"--privileged"
+	],
+	"mounts": [
+		// Чтобы локально хранить кеш зависимостей 
+		{
+			"source": "arduino_data",
+			"target": "/root/.arduino15",
+			"type": "volume"
+		}
+	]
+}
