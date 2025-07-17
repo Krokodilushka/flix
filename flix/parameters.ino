@@ -12,6 +12,7 @@ extern float mavlinkControlScale;
 	extern gamepad_limits gamepadLimits;
 #endif
 extern float seaLevelPa;
+extern float currentLimitEnabled;
 
 Preferences storage;
 
@@ -80,6 +81,7 @@ Parameter parameters[] = {
 	{"GAMEPAD_ROLL", &gamepadLimits.roll},
 #endif
 	{"ALT_SEA_LEVEL_PA", &seaLevelPa},
+	{"BAT_CURRENT_LIM", &currentLimitEnabled},
 };
 
 void setupParameters() {

@@ -3,18 +3,24 @@
  * При падении напряжения ниже BATTERY_DISARMED_THRESHOLD происходит автоматическое отключение моторов.
  * Показания тока и напряжения передаются в QGroundControl (см. файл mavlink.ino).
  * В QGroundControl отображается иконка батареи, ток и напряжение можно вывести в виде виджета.
+ * Можно настроить автоматическое отлючение моторов при высоком и низком токе.
+ * Отключение при высоком токе может быть полезено, если моторы по какой то причине включатся на максимальную тягу.
+ * Отключение при низком токе может быть полезено, если нет данных от датчика тока.
  */
 
 extern int armedChannel; // Нужно для отключения моторов при низком заряде
 
-#define BATTERY_UPDATE_INTERVAL 0.1                  // Интервал обновления данных о батарее в секундах
-#define BATTERY_MIN_LEVEL 3200                       // Минимальное безопасное напряжение аккумулятора (мВ)
-#define BATTERY_MAX_LEVEL 4350                       // Максимальное напряжение аккумулятора (мВ)
-#define BATTERY_DISARMED_THRESHOLD BATTERY_MIN_LEVEL // Порог автоматического отключения моторов (мВ)
+#define BATTERY_UPDATE_INTERVAL 0.1                          // Интервал обновления данных о батарее в секундах
+#define BATTERY_CELLS 4                                      // Сколько ячеек аккумулятора (S1, S2...)
+#define BATTERY_MIN_LEVEL 3400 * BATTERY_CELLS               // Минимальное безопасное напряжение аккумулятора (мВ)
+#define BATTERY_MAX_LEVEL 4200 * BATTERY_CELLS               // Максимальное напряжение аккумулятора (мВ)
+#define BATTERY_DISARMED_VOLTAGE_THRESHOLD BATTERY_MIN_LEVEL // Порог автоматического отключения моторов (мВ)
+#define BATTERY_DISARMED_CURRENT_THRESHOLD_MIN 10            // Мин значение тока (mA) ниже которого моторы отключатся
+#define BATTERY_DISARMED_CURRENT_THRESHOLD_MAX 15000         // Макс значение тока (mA) выше которого моторы отключатся
 
 // Уровни напряжения для уведомлений в QGroundControl
-#define BATTERY_MAVLINK_STATUS_LOW 3500
-#define BATTERY_MAVLINK_STATUS_CRITICAL 3300
+#define BATTERY_MAVLINK_STATUS_LOW 3500 * BATTERY_CELLS
+#define BATTERY_MAVLINK_STATUS_CRITICAL 3300 * BATTERY_CELLS
 #define BATTERY_MAVLINK_STATUS_EMERGENCY BATTERY_MIN_LEVEL
 
 #define INA226_RESISTOR_OHMS 0.005                                                                   // Значение резистора шунта (в Омах), используемого в INA226.
@@ -37,7 +43,7 @@ typedef union
     uint16_t raw;
     struct
     {
-        uint8_t mode_1 : 1;    // Режим измерения
+        uint8_t mode_1 : 1; // Режим измерения
         uint8_t mode_2 : 1;
         uint8_t mode_3 : 1;
         uint8_t v_sh_ct_0 : 1; // Время преобразования шунтового напряжения
@@ -63,6 +69,8 @@ struct battery_data
     uint16_t current;    // mA
     // uint16_t power;      // mW
 } batteryData;
+
+float currentLimitEnabled = 1; // Отключать моторы при высоком токе (BATTERY_DISARMED_CURRENT_THRESHOLD_MAX) и низком токе (BATTERY_DISARMED_CURRENT_THRESHOLD_MIN)
 
 void setupBattery()
 {
@@ -166,19 +174,35 @@ void loopBattery()
     {
         update();
         // print("bus voltage: %d, current: %d, power: %d\n", batteryData.busVoltage, batteryData.current, batteryData.power);
-        if (batteryData.busVoltage < BATTERY_DISARMED_THRESHOLD && controls[armedChannel] == 1)
+        lastUpdateTime = t;
+    }
+    if (controls[armedChannel] == 1)
+    {
+        if (batteryData.busVoltage < BATTERY_DISARMED_VOLTAGE_THRESHOLD)
         {
             controls[armedChannel] = 0;
-            print("Disarmed из-за низкого заряда аккумулятора: %d < %d\n", batteryData.busVoltage, BATTERY_DISARMED_THRESHOLD);
+            print("Disarmed из-за низкого заряда аккумулятора: %d < %d\n", batteryData.busVoltage, BATTERY_DISARMED_VOLTAGE_THRESHOLD);
         }
-        lastUpdateTime = t;
+        if (currentLimitEnabled)
+        {
+            if (batteryData.current > BATTERY_DISARMED_CURRENT_THRESHOLD_MAX)
+            {
+                controls[armedChannel] = 0;
+                print("Disarmed из-за высокого тока: %d > %d\n", batteryData.current, BATTERY_DISARMED_CURRENT_THRESHOLD_MAX);
+            }
+            if (batteryData.current < BATTERY_DISARMED_CURRENT_THRESHOLD_MIN)
+            {
+                controls[armedChannel] = 0;
+                print("Disarmed из-за низкого тока: %d < %d\n", batteryData.current, BATTERY_DISARMED_CURRENT_THRESHOLD_MIN);
+            }
+        }
     }
 }
 
 // Получение данных с датчика
 static void update()
 {
-    uint8_t busVoltageRaw8[2], currentRaw8[2], powerRaw8[2];
+    uint8_t busVoltageRaw8[2], currentRaw8[2];
 
     if (readRegister(&Wire, INA226_DEVICE_ADDRESS, INA226_REG_BUS_VOLTAGE, busVoltageRaw8, 2))
     {
