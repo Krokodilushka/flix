@@ -1,5 +1,6 @@
-BOARD = esp32:esp32:d1_mini32
-PORT := $(wildcard /dev/serial/by-id/usb-Silicon_Labs_CP21* /dev/serial/by-id/usb-1a86_USB_Single_Serial_* /dev/cu.usbserial-*)
+# BOARD = esp32:esp32:d1_mini32
+BOARD = esp32:esp32:esp32s3
+PORT := $(wildcard /dev/serial/by-id/usb-Silicon_Labs_CP21* /dev/serial/by-id/usb-1a86_USB_Single_Serial_* /dev/cu.usbserial-* /dev/ttyACM1)
 PORT := $(strip $(PORT))
 
 build: .dependencies
@@ -18,6 +19,7 @@ dependencies .dependencies:
 	arduino-cli lib install "FlixPeriph"
 	arduino-cli lib install "MAVLink"@2.0.16
 	arduino-cli lib install "NimBLE-Arduino"@2.3.0
+	arduino-cli lib install --git-url https://github.com/derdoktor667/DShotRMT.git#ed9b8c539ad4244720bac5515b2211369d84213d
 	touch .dependencies
 
 gazebo/build cmake: gazebo/CMakeLists.txt

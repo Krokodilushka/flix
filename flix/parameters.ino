@@ -13,6 +13,9 @@ extern float mavlinkControlScale;
 #endif
 extern float seaLevelPa;
 extern float currentLimitEnabled;
+#if USE_DSHOT
+extern float dshotMin, dshotMax;
+#endif
 
 Preferences storage;
 
@@ -82,6 +85,10 @@ Parameter parameters[] = {
 #endif
 	{"ALT_SEA_LEVEL_PA", &seaLevelPa},
 	{"BAT_CURRENT_LIM", &currentLimitEnabled},
+#if USE_DSHOT
+	{"DSHOT_MIN", &dshotMin},
+	{"DSHOT_MAX", &dshotMax},
+#endif
 };
 
 void setupParameters() {
