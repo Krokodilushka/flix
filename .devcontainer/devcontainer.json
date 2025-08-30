@@ -1,0 +1,35 @@
+{
+	"name": "Flix devcontainer",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.shell.linux": "/bin/bash"
+			},
+			// Рекомендованные расширения
+			"extensions": [
+				"vscode-arduino.vscode-arduino-community",
+				"ms-vscode.vscode-serial-monitor",
+				"ms-vscode.cpptools"
+			]
+		}
+	},
+	"runArgs": [
+		"--gpus", "all", // Чтобы содержимое окна gazebo работало плавно, нужно внутри контейнера использовать GPU
+        "--env", "DISPLAY=${env:DISPLAY}", // Чтобы появлялось окно gazebo, нужно выполнить на хосте: xhost +local:docker
+        "--volume", "/tmp/.X11-unix:/tmp/.X11-unix:rw",
+        "--device", "/dev/dri:/dev/dri",
+        "--env", "NVIDIA_VISIBLE_DEVICES=0",
+        "--env", "NVIDIA_DRIVER_CAPABILITIES=all"
+	],
+	"mounts": [
+		// Чтобы локально хранить кеш зависимостей и не загружать их каждый раз при создании контейнера
+		{
+			"source": "arduino_data",
+			"target": "/root/.arduino15",
+			"type": "volume"
+		}
+	]
+}
