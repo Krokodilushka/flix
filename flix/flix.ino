@@ -17,8 +17,8 @@
 
 double t = NAN; // current step time, s
 float dt; // time delta from previous step, s
-int16_t channels[16]; // raw rc channels
-float controls[16]; // normalized controls in range [-1..1] ([0..1] for throttle)
+float controlRoll, controlPitch, controlYaw, controlThrottle; // pilot's inputs, range [-1, 1]
+float controlMode = NAN;
 Vector gyro; // gyroscope data
 Vector acc; // accelerometer data, m/s/s
 Vector rates; // filtered angular rates, rad/s

@@ -12,14 +12,13 @@
 #define PERIOD_FAST 0.1
 #define MAVLINK_CONTROL_YAW_DEAD_ZONE 0.1f
 
-float mavlinkControlScale = 0.7;
 String mavlinkPrintBuffer;
 
-extern double controlsTime;
-extern int rollChannel, pitchChannel, throttleChannel, yawChannel, armedChannel, modeChannel;
 #if GAMEPAD_ENABLED
 extern uint8_t gamepadRssi;
 #endif
+extern double controlTime;
+extern float controlRoll, controlPitch, controlThrottle, controlYaw, controlMode;
 
 void processMavlink() {
 	sendMavlink();
@@ -39,8 +38,10 @@ void sendMavlink() {
 		lastSlow = t;
 
 		mavlink_msg_heartbeat_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_GENERIC,
-			MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | (armed * MAV_MODE_FLAG_SAFETY_ARMED) | ((mode == STAB) * MAV_MODE_FLAG_STABILIZE_ENABLED),
-			0, MAV_STATE_STANDBY);
+			(armed ? MAV_MODE_FLAG_SAFETY_ARMED : 0) |
+			((mode == STAB) ? MAV_MODE_FLAG_STABILIZE_ENABLED : 0) |
+			((mode == AUTO) ? MAV_MODE_FLAG_AUTO_ENABLED : MAV_MODE_FLAG_MANUAL_INPUT_ENABLED),
+			mode, MAV_STATE_STANDBY);
 		sendMessage(&msg);
 
 		mavlink_msg_extended_sys_state_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg,
@@ -111,25 +112,22 @@ void sendMavlink() {
 		lastFast = t;
 
 		const float zeroQuat[] = {0, 0, 0, 0};
-		Quaternion att = fluToFrd(attitude); // MAVLink uses FRD coordinate system
 		mavlink_msg_attitude_quaternion_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg,
-			time, att.w, att.x, att.y, att.z, rates.x, rates.y, rates.z, zeroQuat);
+			time, attitude.w, attitude.x, -attitude.y, -attitude.z, rates.x, -rates.y, -rates.z, zeroQuat); // convert to frd
 		sendMessage(&msg);
 
-		mavlink_msg_rc_channels_scaled_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, controlsTime * 1000, 0,
-			controls[0] * 10000, controls[1] * 10000, controls[2] * 10000,
-			controls[3] * 10000, controls[4] * 10000, controls[5] * 10000,
-			INT16_MAX, INT16_MAX, UINT8_MAX);
-		sendMessage(&msg);
+		mavlink_msg_rc_channels_raw_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, controlTime * 1000, 0,
+			channels[0], channels[1], channels[2], channels[3], channels[4], channels[5], channels[6], channels[7], UINT8_MAX);
+		if (channels[0] != 0) sendMessage(&msg); // 0 means no RC input
 
-		float actuator[32];
-		memcpy(actuator, motors, sizeof(motors));
-		mavlink_msg_actuator_output_status_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, time, 4, actuator);
+		float controls[8];
+		memcpy(controls, motors, sizeof(motors));
+		mavlink_msg_actuator_control_target_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, time, 0, controls);
 		sendMessage(&msg);
 
 		mavlink_msg_scaled_imu_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, time,
-			acc.x * 1000, acc.y * 1000, acc.z * 1000,
-			gyro.x * 1000, gyro.y * 1000, gyro.z * 1000,
+			acc.x * 1000, -acc.y * 1000, -acc.z * 1000, // convert to frd
+			gyro.x * 1000, -gyro.y * 1000, -gyro.z * 1000,
 			0, 0, 0, 0);
 		sendMessage(&msg);
 	}
@@ -163,15 +161,14 @@ void handleMavlink(const void *_msg) {
 		mavlink_msg_manual_control_decode(&msg, &m);
 		if (m.target && m.target != SYSTEM_ID) return; // 0 is broadcast
 
-		controls[throttleChannel] = m.z / 1000.0f;
-		controls[pitchChannel] = m.x / 1000.0f * mavlinkControlScale;
-		controls[rollChannel] = m.y / 1000.0f * mavlinkControlScale;
-		controls[yawChannel] = m.r / 1000.0f * mavlinkControlScale;
-		controls[modeChannel] = 1; // STAB mode
-		controls[armedChannel] = 1; // armed
-		controlsTime = t;
+		controlThrottle = m.z / 1000.0f;
+		controlPitch = m.x / 1000.0f;
+		controlRoll = m.y / 1000.0f;
+		controlYaw = m.r / 1000.0f;
+		controlMode = NAN;
+		controlTime = t;
 
-		if (abs(controls[yawChannel]) < MAVLINK_CONTROL_YAW_DEAD_ZONE) controls[yawChannel] = 0;
+		if (abs(controlYaw) < MAVLINK_CONTROL_YAW_DEAD_ZONE) controlYaw = 0;
 	}
 
 	if (msg.msgid == MAVLINK_MSG_ID_PARAM_REQUEST_LIST) {
@@ -239,24 +236,73 @@ void handleMavlink(const void *_msg) {
 		doCommand(data, true);
 	}
 
+	if (msg.msgid == MAVLINK_MSG_ID_SET_ATTITUDE_TARGET) {
+		if (mode != AUTO) return;
+
+		mavlink_set_attitude_target_t m;
+		mavlink_msg_set_attitude_target_decode(&msg, &m);
+		if (m.target_system && m.target_system != SYSTEM_ID) return;
+
+		// copy attitude, rates and thrust targets
+		ratesTarget.x = m.body_roll_rate;
+		ratesTarget.y = -m.body_pitch_rate; // convert to flu
+		ratesTarget.z = -m.body_yaw_rate;
+		attitudeTarget.w = m.q[0];
+		attitudeTarget.x = m.q[1];
+		attitudeTarget.y = -m.q[2];
+		attitudeTarget.z = -m.q[3];
+		thrustTarget = m.thrust;
+		ratesExtra = Vector(0, 0, 0);
+
+		if (m.type_mask & ATTITUDE_TARGET_TYPEMASK_ATTITUDE_IGNORE) attitudeTarget.invalidate();
+		armed = m.thrust > 0;
+	}
+
+	if (msg.msgid == MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET) {
+		if (mode != AUTO) return;
+
+		mavlink_set_actuator_control_target_t m;
+		mavlink_msg_set_actuator_control_target_decode(&msg, &m);
+		if (m.target_system && m.target_system != SYSTEM_ID) return;
+
+		attitudeTarget.invalidate();
+		ratesTarget.invalidate();
+		torqueTarget.invalidate();
+		memcpy(motors, m.controls, sizeof(motors)); // copy motor thrusts
+		armed = motors[0] > 0 || motors[1] > 0 || motors[2] > 0 || motors[3] > 0;
+	}
+
 	// Handle commands
 	if (msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
 		mavlink_command_long_t m;
 		mavlink_msg_command_long_decode(&msg, &m);
 		if (m.target_system && m.target_system != SYSTEM_ID) return;
-		mavlink_message_t ack;
 		mavlink_message_t response;
+		bool accepted = false;
 
 		if (m.command == MAV_CMD_REQUEST_MESSAGE && m.param1 == MAVLINK_MSG_ID_AUTOPILOT_VERSION) {
-			mavlink_msg_command_ack_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &ack, m.command, MAV_RESULT_ACCEPTED, UINT8_MAX, 0, msg.sysid, msg.compid);
-			sendMessage(&ack);
+			accepted = true;
 			mavlink_msg_autopilot_version_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &response,
 				MAV_PROTOCOL_CAPABILITY_PARAM_FLOAT | MAV_PROTOCOL_CAPABILITY_MAVLINK2, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0);
 			sendMessage(&response);
-		} else {
-			mavlink_msg_command_ack_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &ack, m.command, MAV_RESULT_UNSUPPORTED, UINT8_MAX, 0, msg.sysid, msg.compid);
-			sendMessage(&ack);
 		}
+
+		if (m.command == MAV_CMD_COMPONENT_ARM_DISARM) {
+			if (m.param1 && controlThrottle > 0.05) return; // don't arm if throttle is not low
+			accepted = true;
+			armed = m.param1 == 1;
+		}
+
+		if (m.command == MAV_CMD_DO_SET_MODE) {
+			if (!(m.param2 >= 0 && m.param2 <= AUTO)) return; // incorrect mode
+			accepted = true;
+			mode = m.param2;
+		}
+
+		// send command ack
+		mavlink_message_t ack;
+		mavlink_msg_command_ack_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &ack, m.command, accepted ? MAV_RESULT_ACCEPTED : MAV_RESULT_UNSUPPORTED, UINT8_MAX, 0, msg.sysid, msg.compid);
+		sendMessage(&ack);
 	}
 }
 
@@ -273,15 +319,12 @@ void sendMavlinkPrint() {
 		strlcpy(data, str + i, sizeof(data));
 		mavlink_message_t msg;
 		mavlink_msg_serial_control_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg,
-			SERIAL_CONTROL_DEV_SHELL, 0, 0, 0, strlen(data), (uint8_t *)data, 0, 0);
+			SERIAL_CONTROL_DEV_SHELL,
+			i + MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN < strlen(str) ? SERIAL_CONTROL_FLAG_MULTI : 0, // more chunks to go
+			0, 0, strlen(data), (uint8_t *)data, 0, 0);
 		sendMessage(&msg);
 	}
 	mavlinkPrintBuffer.clear();
-}
-
-// Convert Forward-Left-Up to Forward-Right-Down quaternion
-inline Quaternion fluToFrd(const Quaternion &q) {
-	return Quaternion(q.w, q.x, -q.y, -q.z);
 }
 
 #endif

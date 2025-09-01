@@ -8,9 +8,13 @@
 #include "util.h"
 
 extern const int MOTOR_REAR_LEFT, MOTOR_REAR_RIGHT, MOTOR_FRONT_RIGHT, MOTOR_FRONT_LEFT;
+extern const int ACRO, STAB, AUTO;
 extern float loopRate, dt;
 extern double t;
-extern int rollChannel, pitchChannel, throttleChannel, yawChannel, armedChannel, modeChannel;
+extern uint16_t channels[16];
+extern float controlRoll, controlPitch, controlThrottle, controlYaw, controlMode;
+extern int mode;
+extern bool armed;
 
 const char* motd =
 "\nWelcome to\n"
@@ -30,6 +34,9 @@ const char* motd =
 "ps - show pitch/roll/yaw\n"
 "psq - show attitude quaternion\n"
 "imu - show IMU data\n"
+"arm - arm the drone\n"
+"disarm - disarm the drone\n"
+"stab/acro/auto - set mode\n"
 "rc - show RC data\n"
 "mot - show motor output\n"
 "log - dump in-RAM log\n"
@@ -53,7 +60,6 @@ void print(const char* format, ...) {
 }
 
 void pause(float duration) {
-#if ARDUINO
 	double start = t;
 	while (t - start < duration) {
 		step();
@@ -61,11 +67,8 @@ void pause(float duration) {
 #if WIFI_ENABLED
 		processMavlink();
 #endif
+		delay(50);
 	}
-#else
-	// Code above won't work in the simulation
-	delay(duration * 1000);
-#endif
 }
 
 void doCommand(String str, bool echo = false) {
@@ -107,21 +110,29 @@ void doCommand(String str, bool echo = false) {
 		print("qx: %f qy: %f qz: %f qw: %f\n", attitude.x, attitude.y, attitude.z, attitude.w);
 	} else if (command == "imu") {
 		printIMUInfo();
-		print("gyro: %f %f %f\n", rates.x, rates.y, rates.z);
-		print("acc: %f %f %f\n", acc.x, acc.y, acc.z);
-		printIMUCal();
-		print("rate: %.0f\n", loopRate);
+		printIMUCalibration();
 		print("landed: %d\n", landed);
+	} else if (command == "arm") {
+		armed = true;
+	} else if (command == "disarm") {
+		armed = false;
+	} else if (command == "stab") {
+		mode = STAB;
+	} else if (command == "acro") {
+		mode = ACRO;
+	} else if (command == "auto") {
+		mode = AUTO;
 	} else if (command == "rc") {
-		print("Raw: throttle %d yaw %d pitch %d roll %d armed %d mode %d\n",
-			channels[throttleChannel], channels[yawChannel], channels[pitchChannel],
-			channels[rollChannel], channels[armedChannel], channels[modeChannel]);
-		print("Control: throttle %g yaw %g pitch %g roll %g armed %g mode %g\n",
-			controls[throttleChannel], controls[yawChannel], controls[pitchChannel],
-			controls[rollChannel], controls[armedChannel], controls[modeChannel]);
-		print("Mode: %s\n", getModeName());
+		print("channels: ");
+		for (int i = 0; i < 16; i++) {
+			print("%u ", channels[i]);
+		}
+		print("\nroll: %g pitch: %g yaw: %g throttle: %g mode: %g\n",
+			controlRoll, controlPitch, controlYaw, controlThrottle, controlMode);
+		print("mode: %s\n", getModeName());
+		print("armed: %d\n", armed);
 	} else if (command == "mot") {
-		print("Motors: front-right %g front-left %g rear-right %g rear-left %g\n",
+		print("front-right %g front-left %g rear-right %g rear-left %g\n",
 			motors[MOTOR_FRONT_RIGHT], motors[MOTOR_FRONT_LEFT], motors[MOTOR_REAR_RIGHT], motors[MOTOR_REAR_LEFT]);
 	} else if (command == "log") {
 		dumpLog();
@@ -153,9 +164,9 @@ void doCommand(String str, bool echo = false) {
 		uint32_t totalRunTime;
 		uxTaskGetSystemState(systemState, taskCount, &totalRunTime);
 		for (int i = 0; i < taskCount; i++) {
-			int core = systemState[i].xCoreID == tskNO_AFFINITY ? -1 : systemState[i].xCoreID;
+			String core = systemState[i].xCoreID == tskNO_AFFINITY ? "*" : String(systemState[i].xCoreID);
 			int cpuPercentage = systemState[i].ulRunTimeCounter / (totalRunTime / 100);
-			print("%-5d%-20s%-7d%-6d%-6d%d\n",systemState[i].xTaskNumber, systemState[i].pcTaskName,
+			print("%-5d%-20s%-7d%-6d%-6s%d\n",systemState[i].xTaskNumber, systemState[i].pcTaskName,
 				systemState[i].usStackHighWaterMark, systemState[i].uxCurrentPriority, core, cpuPercentage);
 		}
 		delete[] systemState;

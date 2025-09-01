@@ -18,8 +18,8 @@
 
 #if GAMEPAD_ENABLED
 
-extern int rollChannel, pitchChannel, throttleChannel, yawChannel, armedChannel, modeChannel; // Нужны для управления дроном
-extern double controlsTime;                                                                   // Нужен для работы failsafe
+extern float controlRoll, controlPitch, controlThrottle, controlYaw, controlMode; // Нужны для управления дроном
+extern double controlTime;                                                        // Нужен для работы failsafe
 
 #define THROTTLE_CHANGE_INTERVAL 0.01f // С каким интервалом регулировать тягу (10 мс)
 #define GAMEPAD_STICK_L_DEADZONE 0.05f // Не реагировать на небольшие движения левого стика
@@ -116,7 +116,7 @@ class ClientCallback : public NimBLEClientCallbacks
         connectionState = ConnectionState::DISCONNECTED;
         print("Геймпад отключён\n");
         gamepadState = {};  // Состояние нажатых кнопок сбрасывается
-        controlsTime = 0.0; // Для быстрого срабатывания failsafe
+        controlTime = 0.0; // Для быстрого срабатывания failsafe
     }
 };
 
@@ -149,7 +149,7 @@ void loopGamepad()
         break;
     case ConnectionState::SUBSCRIBED:
         static double rssiLastUpdateTime = 0.0;
-        controlsTime = t;
+        controlTime = t;
         if (t - rssiLastUpdateTime > RSSI_INTERVAL)
         {
             gamepadRssi = pClient->getRssi();
@@ -191,7 +191,7 @@ void handleThrottle()
     {
         const int16_t throttle = gamepadState.rt - gamepadState.lt;                               // Если конопки тяги прижаты на равное значение, то уровень тяги не изменится
         float value = mapf(throttle, -255, 255, -gamepadLimits.throttle, gamepadLimits.throttle); // Ограничить влияние кнопок для плавности
-        controls[throttleChannel] = constrain(controls[throttleChannel] + value, 0.f, 1.f);       // Прибавить к текущему уровню тяги
+        controlThrottle = constrain(controlThrottle + value, 0.f, 1.f);                           // Прибавить к текущему уровню тяги
         throttleLastUpdateTime = t;
     }
 }
@@ -332,42 +332,42 @@ void onCharacteristicCallback(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
     if (gamepadState.b)
     {
         // Тягу на 0
-        controls[throttleChannel] = 0.f;
-        if (controls[armedChannel] != 0.f)
+        controlThrottle = 0.0f;
+        if (armed)
         {
-            controls[armedChannel] = 0.f;
+            armed = false;
             print("Disarmed\n");
         }
     }
     // Кнопка A разрешает моторам работать (armed)
     else if (gamepadState.a)
     {
-        if (controls[armedChannel] != 1.f)
+        if (!armed)
         {
             // На всякий случай тягу на 0
-            controls[throttleChannel] = 0.f;
-            controls[armedChannel] = 1.f;
+            controlThrottle = 0.f;
+            armed = true;
             print("Armed\n");
         }
     }
 
     // Верхние кнопки LB/RB управляют наклоном влево/впараво (крен/roll)
-    controls[rollChannel] = mapf(gamepadState.rb - gamepadState.lb, -1, 1, -gamepadLimits.roll, gamepadLimits.roll);
+    controlRoll = mapf(gamepadState.rb - gamepadState.lb, -1, 1, -gamepadLimits.roll, gamepadLimits.roll);
 
     // Левый стик вперед/назад управляет наклоном вперед/назад (тангаж/pitch)
-    controls[pitchChannel] = mapf(gamepadState.stick_l_y, -128, 127, gamepadLimits.pitch, -gamepadLimits.pitch);
+    controlPitch = mapf(gamepadState.stick_l_y, -128, 127, gamepadLimits.pitch, -gamepadLimits.pitch);
     // Не реагировать, если движение стика меньше чем deadzone
-    if (controls[pitchChannel] > -GAMEPAD_STICK_L_DEADZONE && controls[pitchChannel] < GAMEPAD_STICK_L_DEADZONE)
+    if (controlPitch > -GAMEPAD_STICK_L_DEADZONE && controlPitch < GAMEPAD_STICK_L_DEADZONE)
     {
-        controls[pitchChannel] = 0;
+        controlPitch = 0;
     }
 
     // Левый стик вправо/влево управляет поворотом (рысканье/yaw)
-    controls[yawChannel] = mapf(gamepadState.stick_l_x, -128, 127, -gamepadLimits.yaw, gamepadLimits.yaw);
+    controlYaw = mapf(gamepadState.stick_l_x, -128, 127, -gamepadLimits.yaw, gamepadLimits.yaw);
     // Не реагировать, если движение стика меньше чем deadzone
-    if (controls[yawChannel] > -GAMEPAD_STICK_L_DEADZONE && controls[yawChannel] < GAMEPAD_STICK_L_DEADZONE)
+    if (controlYaw > -GAMEPAD_STICK_L_DEADZONE && controlYaw < GAMEPAD_STICK_L_DEADZONE)
     {
-        controls[yawChannel] = 0;
+        controlYaw = 0;
     }
 
     // По нажатию C запустить калибровку гироскопа

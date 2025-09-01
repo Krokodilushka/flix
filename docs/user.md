@@ -4,7 +4,52 @@ This page contains user-built drones based on the Flix project. Publish your pro
 
 ---
 
-Author: [@cryptokobans](https://t.me/cryptokobans).<br>
+## RoboCamp
+
+Author: RoboCamp participants.<br>
+Description: 3D-printed and wooden frames, ESP32 Mini, DC-DC buck-boost converters. BetaFPV LiteRadio 3 to control the drones via Wi-Fi connection.<br>
+Features: altitude hold, obstacle avoidance, autonomous flight elements.<br>
+Some of the designed model files: https://drive.google.com/drive/folders/18YHWGquKeIevzrMH4-OUT-zKXMETTEUu?usp=share_link.
+
+RoboCamp took place in July 2025, Saint Petersburg, where 9 participants designed and built their own drones using the Flix project, and then modified the firmware to complete specific flight tasks.
+
+See the detailed video about the event:
+
+<a href="https://youtu.be/Wd3yaorjTx0"><img width=500 src="https://img.youtube.com/vi/Wd3yaorjTx0/sddefault.jpg"></a>
+
+Built drones:
+
+<img src="img/user/robocamp/1.jpg" width=500>
+
+---
+
+Author: chkroko.<br>
+Description: the first Flix drone built with **brushless motors** (DShot interface).<br>
+Features: SpeedyBee BLS 35A Mini V2 ESC, ESP32-S3 board, EMAX ECO 2 2207 1700kv motors, ICM20948V2 IMU, INA226 power monitor and Bluetooth gamepad for control.<br>
+Patch for DShot ESC: https://github.com/Krokodilushka/flix/commit/568345a45ca7ed5b458a11a9d0a9f4c8a91e70ac.
+
+**Flight video:**
+
+<a href="https://drive.google.com/file/d/1GFRanASxKmXINi70fxS5RuzV3LJp7f3m/view?usp=share_link"><img height=300 src="img/user/chkroko-bldc/video.jpg"></a>
+
+<img src="img/user/chkroko-bldc/1.jpg" height=150> <img src="img/user/chkroko-bldc/2.jpg" height=150> <img src="img/user/chkroko-bldc/3.jpg" height=150>
+
+---
+
+Author: chkroko.<br>
+Modification: Control using Bluetooth with **Flydigi Vader 3** gamepad. Source code: https://github.com/Krokodilushka/flix/tree/dev.<br>
+Features: ESP32-C3 SuperMini, BMP580 barometer, INA226 power monitor, IRLZ44N MOSFETs.<br>
+Full description: https://telegra.ph/Flix-dron-06-13.
+
+**Flight video:**
+
+<a href="https://drive.google.com/file/d/1orVKA_-gsezDTns2Xt8xW1BCWPcyPitR/view?usp=sharing"><img height=300 src="img/user/chkroko/video.jpg"></a>
+
+<img src="img/user/chkroko/1.jpg" height=150> <img src="img/user/chkroko/2.jpg" height=150>
+
+---
+
+Author: chkroko.<br>
 Features: ESP32-C3 SuperMini board, INA226 power monitor, IRLZ44N MOSFETs, MPU-6500 IMU.
 
 **Flight video:**

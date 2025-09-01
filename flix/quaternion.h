@@ -64,6 +64,22 @@ public:
 		return isfinite(w) && isfinite(x) && isfinite(y) && isfinite(z);
 	}
 
+	bool valid() const {
+		return finite();
+	}
+
+	bool invalid() const {
+		return !valid();
+	}
+
+	void invalidate() {
+		w = NAN;
+		x = NAN;
+		y = NAN;
+		z = NAN;
+	}
+
+
 	float norm() const {
 		return sqrt(w * w + x * x + y * y + z * z);
 	}
@@ -84,6 +100,7 @@ public:
 	}
 
 	Vector toRotationVector() const {
+		if (w == 1 && x == 0 && y == 0 && z == 0) return Vector(0, 0, 0); // neutral quaternion
 		float angle;
 		Vector axis;
 		toAxisAngle(axis, angle);
@@ -115,29 +132,31 @@ public:
 		return euler;
 	}
 
+	float getRoll() const {
+		return toEuler().x;
+	}
+
+	float getPitch() const {
+		return toEuler().y;
+	}
+
 	float getYaw() const {
-		// https://github.com/ros/geometry2/blob/589caf083cae9d8fae7effdb910454b4681b9ec1/tf2/include/tf2/impl/utils.h#L122
-		float yaw;
-		float sqx = x * x;
-		float sqy = y * y;
-		float sqz = z * z;
-		float sqw = w * w;
-		double sarg = -2 * (x * z - w * y) / (sqx + sqy + sqz + sqw);
-		if (sarg <= -0.99999) {
-			yaw = -2 * atan2(y, x);
-		} else if (sarg >= 0.99999) {
-			yaw = 2 * atan2(y, x);
-		} else {
-			yaw = atan2(2 * (x * y + w * z), sqw + sqx - sqy - sqz);
-		}
-		return yaw;
+		return toEuler().z;
+	}
+
+	void setRoll(float roll) {
+		Vector euler = toEuler();
+		*this = Quaternion::fromEuler(Vector(roll, euler.y, euler.z));
+	}
+
+	void setPitch(float pitch) {
+		Vector euler = toEuler();
+		*this = Quaternion::fromEuler(Vector(euler.x, pitch, euler.z));
 	}
 
 	void setYaw(float yaw) {
-		// TODO: optimize?
 		Vector euler = toEuler();
-		euler.z = yaw;
-		(*this) = Quaternion::fromEuler(euler);
+		*this = Quaternion::fromEuler(Vector(euler.x, euler.y, yaw));
 	}
 
 	Quaternion operator * (const Quaternion& q) const {
@@ -146,6 +165,14 @@ public:
 			w * q.x + x * q.w + y * q.z - z * q.y,
 			w * q.y + y * q.w + z * q.x - x * q.z,
 			w * q.z + z * q.w + x * q.y - y * q.x);
+	}
+
+	bool operator == (const Quaternion& q) const {
+		return w == q.w && x == q.x && y == q.y && z == q.z;
+	}
+
+	bool operator != (const Quaternion& q) const {
+		return !(*this == q);
 	}
 
 	Quaternion inversed() const {

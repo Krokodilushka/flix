@@ -3,29 +3,20 @@
 
 // Fail-safe functions
 
-#define RC_LOSS_TIMEOUT 0.2
+#define RC_LOSS_TIMEOUT 0.5
 #define DESCEND_TIME 3.0 // time to descend from full throttle to zero
 
-extern double controlsTime;
-extern int rollChannel, pitchChannel, throttleChannel, yawChannel;
+extern double controlTime;
+extern float controlRoll, controlPitch, controlThrottle, controlYaw;
 
 void failsafe() {
-	armingFailsafe();
 	rcLossFailsafe();
-}
-
-// Prevent arming without zero throttle input
-void armingFailsafe() {
-	static double zeroThrottleTime;
-	static double armingTime;
-	if (!armed) armingTime = t; // stores the last time when the drone was disarmed, therefore contains arming time
-	if (controlsTime > 0 && controls[throttleChannel] < 0.05) zeroThrottleTime = controlsTime;
-	if (armingTime - zeroThrottleTime > 0.1) armed = false; // prevent arming if there was no zero throttle for 0.1 sec
+	autoFailsafe();
 }
 
 // RC loss failsafe
 void rcLossFailsafe() {
-	if (t - controlsTime > RC_LOSS_TIMEOUT) {
+	if (t - controlTime > RC_LOSS_TIMEOUT) {
 		descend();
 	}
 }
@@ -33,9 +24,25 @@ void rcLossFailsafe() {
 // Smooth descend on RC lost
 void descend() {
 	mode = STAB;
-	controls[rollChannel] = 0;
-	controls[pitchChannel] = 0;
-	controls[yawChannel] = 0;
-	controls[throttleChannel] -= dt / DESCEND_TIME;
-	if (controls[throttleChannel] < 0) controls[throttleChannel] = 0;
+	controlRoll = 0;
+	controlPitch = 0;
+	controlYaw = 0;
+	controlThrottle -= dt / DESCEND_TIME;
+	if (controlThrottle < 0) {
+		armed = false;
+		controlThrottle = 0;
+	}
+}
+
+// Allow pilot to interrupt automatic flight
+void autoFailsafe() {
+	static float roll, pitch, yaw, throttle;
+	if (roll != controlRoll || pitch != controlPitch || yaw != controlYaw || abs(throttle - controlThrottle) > 0.05) {
+		// controls changed
+		if (mode == AUTO) mode = STAB; // regain control by the pilot
+	}
+	roll = controlRoll;
+	pitch = controlPitch;
+	yaw = controlYaw;
+	throttle = controlThrottle;
 }

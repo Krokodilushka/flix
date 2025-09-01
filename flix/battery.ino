@@ -8,7 +8,7 @@
  * Отключение при низком токе может быть полезено, если нет данных от датчика тока.
  */
 
-extern int armedChannel; // Нужно для отключения моторов при низком заряде
+extern bool armed; // Нужно для отключения моторов при низком заряде
 
 #define BATTERY_UPDATE_INTERVAL 0.1                          // Интервал обновления данных о батарее в секундах
 #define BATTERY_CELLS 4                                      // Сколько ячеек аккумулятора (S1, S2...)
@@ -176,23 +176,23 @@ void loopBattery()
         // print("bus voltage: %d, current: %d, power: %d\n", batteryData.busVoltage, batteryData.current, batteryData.power);
         lastUpdateTime = t;
     }
-    if (controls[armedChannel] == 1)
+    if (armed)
     {
         if (batteryData.busVoltage < BATTERY_DISARMED_VOLTAGE_THRESHOLD)
         {
-            controls[armedChannel] = 0;
+            armed = false;
             print("Disarmed из-за низкого заряда аккумулятора: %d < %d\n", batteryData.busVoltage, BATTERY_DISARMED_VOLTAGE_THRESHOLD);
         }
         if (currentLimitEnabled)
         {
             if (batteryData.current > BATTERY_DISARMED_CURRENT_THRESHOLD_MAX)
             {
-                controls[armedChannel] = 0;
+                armed = false;
                 print("Disarmed из-за высокого тока: %d > %d\n", batteryData.current, BATTERY_DISARMED_CURRENT_THRESHOLD_MAX);
             }
             if (batteryData.current < BATTERY_DISARMED_CURRENT_THRESHOLD_MIN)
             {
-                controls[armedChannel] = 0;
+                armed = false;
                 print("Disarmed из-за низкого тока: %d < %d\n", batteryData.current, BATTERY_DISARMED_CURRENT_THRESHOLD_MIN);
             }
         }

@@ -30,8 +30,9 @@ DShotRMT motor04(MOTOR_3_PIN, DSHOT_MODE, IS_BIDIRECTIONAL);
 float dshotMin = 48;
 float dshotMax = 1000;
 #else
-#define PWM_FREQUENCY 1000
-#define PWM_RESOLUTION 12
+
+#define PWM_FREQUENCY 78000
+#define PWM_RESOLUTION 10
 #define PWM_STOP 0
 #define PWM_MIN 0
 #define PWM_MAX 1000000 / PWM_FREQUENCY
