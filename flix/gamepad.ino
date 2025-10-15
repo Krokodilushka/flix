@@ -21,10 +21,6 @@
 extern float controlRoll, controlPitch, controlThrottle, controlYaw, controlMode; // Нужны для управления дроном
 extern double controlTime;                                                        // Нужен для работы failsafe
 
-#define THROTTLE_CHANGE_INTERVAL 0.01f // С каким интервалом регулировать тягу (10 мс)
-#define GAMEPAD_STICK_L_DEADZONE 0.05f // Не реагировать на небольшие движения левого стика
-#define RSSI_INTERVAL 1.0
-
 NimBLEUUID serviceUUID("1812");        // Служба HID, которая должна быть на геймпаде
 NimBLEUUID characteristicUUID("2A4D"); // Характеристика службы HID, которая должна быть на геймпаде
 
@@ -150,7 +146,7 @@ void loopGamepad()
     case ConnectionState::SUBSCRIBED:
         static double rssiLastUpdateTime = 0.0;
         controlTime = t;
-        if (t - rssiLastUpdateTime > RSSI_INTERVAL)
+        if (t - rssiLastUpdateTime > GAMEPAD_RSSI_INTERVAL)
         {
             gamepadRssi = pClient->getRssi();
             rssiLastUpdateTime = t;
@@ -187,7 +183,7 @@ void loopGamepad()
 void handleThrottle()
 {
     static double throttleLastUpdateTime = 0.0;
-    if (t - throttleLastUpdateTime > THROTTLE_CHANGE_INTERVAL)
+    if (t - throttleLastUpdateTime > GAMEPAD_THROTTLE_CHANGE_INTERVAL)
     {
         const int16_t throttle = gamepadState.rt - gamepadState.lt;                               // Если конопки тяги прижаты на равное значение, то уровень тяги не изменится
         float value = mapf(throttle, -255, 255, -gamepadLimits.throttle, gamepadLimits.throttle); // Ограничить влияние кнопок для плавности

@@ -11,10 +11,11 @@ extern float rollChannel, pitchChannel, throttleChannel, yawChannel, armedChanne
 #if GAMEPAD_ENABLED
 	extern gamepad_limits gamepadLimits;
 #endif
+#if BAROMETER_ENABLED
 extern float seaLevelPa;
+#endif
+#if BATTERY_ENABLED
 extern float currentLimitEnabled;
-#if USE_DSHOT
-extern float dshotMin, dshotMax;
 #endif
 
 Preferences storage;
@@ -79,11 +80,11 @@ Parameter parameters[] = {
 	{"GAMEPAD_YAW", &gamepadLimits.yaw},
 	{"GAMEPAD_ROLL", &gamepadLimits.roll},
 #endif
+#if BAROMETER_ENABLED
 	{"ALT_SEA_LEVEL_PA", &seaLevelPa},
+#endif
+#if BATTERY_ENABLED
 	{"BAT_CURRENT_LIM", &currentLimitEnabled},
-#if USE_DSHOT
-	{"DSHOT_MIN", &dshotMin},
-	{"DSHOT_MAX", &dshotMax},
 #endif
 	{"RC_ROLL", &rollChannel},
 	{"RC_PITCH", &pitchChannel},

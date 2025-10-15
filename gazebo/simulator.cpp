@@ -25,7 +25,6 @@
 #include "log.ino"
 #include "lpf.h"
 #include "mavlink.ino"
-#include "motors.ino"
 #include "parameters.ino"
 #include "rc.ino"
 #include "time.ino"
@@ -70,8 +69,9 @@ public:
 		// read virtual imu
 		gyro = Vector(imu->AngularVelocity().X(), imu->AngularVelocity().Y(), imu->AngularVelocity().Z());
 		acc = this->accFilter.update(Vector(imu->LinearAcceleration().X(), imu->LinearAcceleration().Y(), imu->LinearAcceleration().Z()));
-
+		#if RC_ENABLED
 		readRC();
+		#endif
 		estimate();
 
 		// correct yaw to the actual yaw

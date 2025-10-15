@@ -1,6 +1,7 @@
 # BOARD = esp32:esp32:d1_mini32
 BOARD = esp32:esp32:esp32s3
-PORT := $(wildcard /dev/serial/by-id/usb-Silicon_Labs_CP21* /dev/serial/by-id/usb-1a86_USB_Single_Serial_* /dev/cu.usbserial-* /dev/ttyACM1)
+# BOARD = esp32:esp32:makergo_c3_supermini
+PORT := $(wildcard /dev/ttyACM*)
 PORT := $(strip $(PORT))
 
 build: .dependencies

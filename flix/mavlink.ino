@@ -48,12 +48,12 @@ void sendMavlink() {
 			MAV_VTOL_STATE_UNDEFINED, landed ? MAV_LANDED_STATE_ON_GROUND : MAV_LANDED_STATE_IN_AIR);
 		sendMessage(&msg);
 
-// Отправка данных о качестве связи с геймпадом
-#if GAMEPAD_ENABLED
+		#if GAMEPAD_ENABLED
 		mavlink_msg_radio_status_pack(SYSTEM_ID, MAV_COMP_ID_AUTOPILOT1, &msg, gamepadRssi, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX, UINT8_MAX);
 		sendMessage(&msg);
-#endif
+		#endif
 
+		#if BATTERY_ENABLED
 		// Отправка данных о состоянии аккумулятора
 		uint8_t batteryChargeState = MAV_BATTERY_CHARGE_STATE::MAV_BATTERY_CHARGE_STATE_OK;
 		if (batteryData.busVoltage <= BATTERY_MAVLINK_STATUS_EMERGENCY)
@@ -90,7 +90,9 @@ void sendMavlink() {
 			0);
 
 		sendMessage(&msg);
+		#endif
 
+		#if BAROMETER_ENABLED
 		// Отправка данных о текущей высоте
 		mavlink_msg_global_position_int_pack(
 			SYSTEM_ID,
@@ -106,6 +108,7 @@ void sendMavlink() {
 			NULL,
 			UINT16_MAX);
 		sendMessage(&msg);
+		#endif
 	}
 
 	if (t - lastFast >= PERIOD_FAST) {

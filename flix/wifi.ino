@@ -9,8 +9,6 @@
 #include <WiFiAP.h>
 #include <WiFiUdp.h>
 
-#define WIFI_SSID "flix"
-#define WIFI_PASSWORD "flixwifi"
 #define WIFI_UDP_PORT 14550
 #define WIFI_UDP_REMOTE_PORT 14550
 #define WIFI_UDP_REMOTE_ADDR "255.255.255.255"
@@ -19,7 +17,12 @@ WiFiUDP udp;
 
 void setupWiFi() {
 	print("Setup Wi-Fi\n");
-	WiFi.softAP(WIFI_SSID, WIFI_PASSWORD);
+	WiFi.mode(WIFI_MODE);
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	if (!WiFi.setTxPower(WIFI_TX_POWER)) {
+		print("Ошибка установки мощности Wi-Fi\n");
+		return;
+	}
 	udp.begin(WIFI_UDP_PORT);
 }
 

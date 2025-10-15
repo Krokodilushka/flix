@@ -9,11 +9,10 @@
 #include "util.h"
 #include <NimBLEDevice.h>
 #include <NimBLEAddress.h>
+#include "config.h"
+#include <SPI.h>
 
 #define SERIAL_BAUDRATE 115200
-#define WIFI_ENABLED 1
-#define RC_ENABLED 1
-#define GAMEPAD_ENABLED 0
 
 double t = NAN; // current step time, s
 float dt; // time delta from previous step, s
@@ -28,6 +27,8 @@ float motors[4]; // normalized motors thrust in range [0..1]
 
 void setup() {
 	Serial.begin(SERIAL_BAUDRATE);
+	SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN, SPI_SS_PIN);
+	Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 	print("Initializing flix\n");
 	disableBrownOut();
 	setupParameters();
@@ -44,9 +45,12 @@ void setup() {
 #if GAMEPAD_ENABLED
 	setupGamepad();
 #endif
-	Wire.begin();
+#if BATTERY_ENABLED
 	setupBattery();
+#endif
+#if BAROMETER_ENABLED
 	setupBarometr();
+#endif
 	setLED(false);
 	print("Initializing complete\n");
 }
@@ -69,6 +73,10 @@ void loop() {
 #endif
 	logData();
 	syncParameters();
+#if BATTERY_ENABLED
 	loopBattery();
+#endif
+#if BAROMETER_ENABLED
 	loopBarometr();
+#endif
 }

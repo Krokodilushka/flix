@@ -44,7 +44,7 @@ void readIMU() {
 void rotateIMU(Vector& data) {
 	// Rotate from LFD to FLU
 	// NOTE: In case of using other IMU orientation, change this line:
-	data = Vector(data.y, data.x, -data.z);
+	data = Vector(-data.x, data.y, -data.z);
 	// Axes orientation for various boards: https://github.com/okalachev/flixperiph#imu-axes-orientation
 }
 

@@ -16,9 +16,11 @@ void failsafe() {
 
 // RC loss failsafe
 void rcLossFailsafe() {
+	#if !GAMEPAD_ENABLED
 	if (t - controlTime > RC_LOSS_TIMEOUT) {
 		descend();
 	}
+	#endif
 }
 
 // Smooth descend on RC lost
